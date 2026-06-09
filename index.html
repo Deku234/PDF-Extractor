@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF KeyPoint Extractor</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- PDF.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero / Upload Section -->
+        <section class="hero">
+            <h1>PDF KeyPoint Extractor</h1>
+            <p class="subtitle">Upload any PDF. Get the key points instantly.</p>
+
+            <!-- API Key Input -->
+            <div class="input-group">
+                <input 
+                    type="password" 
+                    id="apiKeyInput" 
+                    class="input-field" 
+                    placeholder="Paste your Gemini API key"
+                    autocomplete="off"
+                >
+                <small class="security-note">🔒 Your API key is never stored or sent anywhere except Gemini</small>
+            </div>
+
+            <!-- PDF Upload -->
+            <div class="upload-section">
+                <input 
+                    type="file" 
+                    id="pdfUpload" 
+                    accept=".pdf"
+                    style="display: none;"
+                >
+                <button class="btn btn-primary" id="uploadBtn">
+                    📄 Upload PDF
+                </button>
+            </div>
+
+            <!-- Role Selector -->
+            <div class="role-selector">
+                <p>Select your role:</p>
+                <div class="role-buttons">
+                    <button class="btn role-btn active" data-role="Student">
+                        🎓 Student
+                    </button>
+                    <button class="btn role-btn" data-role="Professional">
+                        💼 Professional
+                    </button>
+                    <button class="btn role-btn" data-role="Researcher">
+                        🔬 Researcher
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+            <p>Reading your PDF... extracting key points...</p>
+        </div>
+
+        <!-- Results Section -->
+        <section id="resultsSection" class="results-section" style="display: none;">
+            <div class="results-header">
+                <h2>Key Points</h2>
+                <button class="btn btn-secondary" id="copyAllBtn">
+                    📋 Copy All Points
+                </button>
+            </div>
+
+            <div id="keyPointsList" class="key-points-list">
+                <!-- Key points will be rendered here -->
+            </div>
+
+            <!-- Ask the PDF Chat Box -->
+            <div class="chat-section">
+                <h3>Ask the PDF</h3>
+                <p class="chat-subtitle">Ask anything about this document...</p>
+                
+                <div class="chat-box">
+                    <input 
+                        type="text" 
+                        id="questionInput" 
+                        class="input-field" 
+                        placeholder="Type your question..."
+                    >
+                    <button class="btn btn-accent" id="sendBtn">
+                        Send
+                    </button>
+                </div>
+
+                <div id="chatResponse" class="chat-response" style="display: none;">
+                    <p id="responseText"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Error Messages -->
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
