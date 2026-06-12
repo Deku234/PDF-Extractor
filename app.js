@@ -62,19 +62,31 @@ async function extractTextFromPDF(file) {
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
         totalPages = pdf.numPages;
-        pdfPageTexts = {};
+        const pageTexts = {};
+        let fullText = '';
 
-        // Extract text from all pages
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
+        // Extract text from all pages sequentially to maintain order
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
-            const pageText = textContent.items.map(item => item.str).join(' ');
-            pdfPageTexts[pageNum] = pageText;
+            const text = textContent.items.map(item => item.str).join(' ');
+            pageTexts[i] = text;
+            fullText += text + ' ';
         }
 
+        // Sort pageTexts by page number
+        const sortedPageTexts = {};
+        Object.keys(pageTexts)
+            .sort((a, b) => Number(a) - Number(b))
+            .forEach(key => {
+                sortedPageTexts[key] = pageTexts[key];
+            });
+
+        pdfPageTexts = sortedPageTexts;
+
         return {
-            fullText: '', // Will be built dynamically
-            pageTexts: pdfPageTexts,
+            fullText: fullText.trim(),
+            pageTexts: sortedPageTexts,
             totalPages: pdf.numPages
         };
     } catch (error) {
