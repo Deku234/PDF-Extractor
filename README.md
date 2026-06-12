@@ -27,7 +27,9 @@ Reading long PDFs is frustrating and time-consuming. Different professionals—s
 - 📍 **Page Number References** - Know exactly where each key point appears in the document
 - 🎯 **Priority Scoring** - Identify high, medium, and low priority points at a glance
 - 💬 **Ask the PDF** - Chat interface to ask questions directly about your document
-- 📋 **Copy All Points** - Export all key points to clipboard with one click
+- � **Smart Pagination** - Large PDFs (50+ pages) are processed in batches of 50 pages with Previous/Next navigation so the app never gets overloaded
+- 💬 **Dedicated Chat Page** - A full chat interface on a separate page (chat.html) for deep conversation with your PDF, with professional chat bubbles and formatted AI responses
+- �📋 **Copy All Points** - Export all key points to clipboard with one click
 - 🚀 **100% Browser-Based** - No backend, no server, no database needed
 - 🔒 **Privacy First** - Your API key stays in your browser, never stored or logged
 
@@ -76,6 +78,20 @@ The AI analyzes your PDF and returns 5-8 key points with:
 ### Step 7: Ask Questions
 Use the **"Ask the PDF"** chat box to ask any question about your document. The AI answers based only on the document content.
 
+### Step 8: Navigate Large PDFs
+If your PDF has more than 50 pages:
+- The app processes first 50 pages automatically
+- Click **"Next 50 Pages →"** to analyze the next batch
+- Click **"← Previous 50 Pages"** to go back
+- A page counter shows: "Showing pages 1-50 of 120"
+
+### Step 9: Open Full Chat Page
+- Click **"💬 Chat with PDF"** button in results section
+- A dedicated chat page opens with full conversation interface
+- Chat bubbles show your questions and AI answers professionally
+- AI responses include headings, paragraphs and emojis
+- Click **"← Back"** to return to main page
+
 ---
 
 ## 💡 GitHub Copilot Usage
@@ -87,6 +103,9 @@ This project was built entirely with GitHub Copilot:
 - **Debugging** - Copilot helped identify and fix API integration issues
 - **API Migration** - Copilot assisted in migrating from Anthropic API to Google Gemini API with minimal changes
 - **Function Generation** - Used Copilot to implement `extractTextFromPDF()`, `getKeyPoints()`, and `askQuestion()` functions
+- **Pagination Logic** - Copilot wrote the complete 50-page batch processing and navigation system
+- **Chat Page** - Copilot generated entire chat.html and chat.js with professional bubble UI
+- **Response Formatting** - Copilot helped implement markdown-to-HTML parser for AI chat responses
 
 ---
 
@@ -127,6 +146,18 @@ Contributions are welcome! Feel free to:
 ## 📧 Contact
 
 For questions or feedback, please open an issue on GitHub.
+
+---
+
+## 🏆 Hackathon Requirements Fulfilled
+
+| Requirement                  | How it's met                                                                                |
+|------------------------------|--------------------------------------------------------------------------------------------|
+| **GitHub Copilot Usage**     | Used to generate all 3 core files (index.html, style.css, app.js),autocomplete for CSS, debugging API issues, pagination logic, chat page generation, and response formatting |
+| **Microsoft IQ Integration** | Planned future integration with Microsoft Foundry IQ |
+| **Creative Application**     | Role-based PDF analysis with 50-page smart pagination, dedicated chat page with professional formatting, and priority scoring |
+| **Security**                 | API key stored in sessionStorage only, never hardcoded or logged |
+| **No Backend Knowledge**     | 100% frontend — HTML, CSS, and Vanilla JavaScript only |
 
 ---
 
