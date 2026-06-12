@@ -9,6 +9,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
+    <!-- Theme Toggle -->
+    <div class="theme-toggle-container">
+        <input type="checkbox" id="themeToggle" class="theme-toggle-checkbox" />
+        <label for="themeToggle" class="theme-toggle-label">
+            <span class="toggle-icon-light">☀️</span>
+            <span class="toggle-slider"></span>
+            <span class="toggle-icon-dark">🌙</span>
+        </label>
+    </div>
+
     <div class="container">
         <!-- Hero / Upload Section -->
         <section class="hero">
@@ -67,9 +77,14 @@
         <section id="resultsSection" class="results-section" style="display: none;">
             <div class="results-header">
                 <h2>Key Points</h2>
-                <button class="btn btn-secondary" id="copyAllBtn">
-                    📋 Copy All Points
-                </button>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-secondary" id="copyAllBtn">
+                        📋 Copy All Points
+                    </button>
+                    <button class="btn btn-primary" id="chatWithPdfBtn">
+                        💬 Chat with PDF
+                    </button>
+                </div>
             </div>
 
             <div id="keyPointsList" class="key-points-list">

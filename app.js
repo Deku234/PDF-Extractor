@@ -1,9 +1,43 @@
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+// ===== THEME TOGGLE =====
+const themeToggle = document.getElementById('themeToggle');
+const htmlElement = document.documentElement;
+
+// Initialize theme from localStorage or system preference
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    let theme = savedTheme || (prefersDark ? 'dark' : 'light');
+    
+    htmlElement.setAttribute('data-theme', theme);
+    themeToggle.checked = theme === 'dark';
+}
+
+// Toggle theme
+function toggleTheme() {
+    const currentTheme = htmlElement.getAttribute('data-theme') || 'light';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    htmlElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    themeToggle.checked = newTheme === 'dark';
+}
+
+themeToggle.addEventListener('change', toggleTheme);
+
+// Initialize theme on page load
+initializeTheme();
+
 // Global state
 let currentPdfData = null;
 let currentRole = 'Student';
+let pdfPageTexts = {};
+let totalPages = 0;
+let currentPageStart = 1;
+let currentFileName = '';
 
 // DOM Elements
 const apiKeyInput = document.getElementById('apiKeyInput');
@@ -23,24 +57,24 @@ const errorMessage = document.getElementById('errorMessage');
 // ===== EXTRACT TEXT FROM PDF =====
 async function extractTextFromPDF(file) {
     try {
+        currentFileName = file.name;
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-        const pageTexts = {};
-        let fullText = '';
+        totalPages = pdf.numPages;
+        pdfPageTexts = {};
 
         // Extract text from all pages
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
             const page = await pdf.getPage(pageNum);
             const textContent = await page.getTextContent();
             const pageText = textContent.items.map(item => item.str).join(' ');
-            pageTexts[pageNum] = pageText;
-            fullText += `\n\n--- Page ${pageNum} ---\n${pageText}`;
+            pdfPageTexts[pageNum] = pageText;
         }
 
         return {
-            fullText: fullText,
-            pageTexts: pageTexts,
+            fullText: '', // Will be built dynamically
+            pageTexts: pdfPageTexts,
             totalPages: pdf.numPages
         };
     } catch (error) {
@@ -50,19 +84,33 @@ async function extractTextFromPDF(file) {
     }
 }
 
-// ===== GET KEY POINTS FROM ANTHROPIC API =====
-async function getKeyPoints(pdfData, role, apiKey) {
+// ===== GET PAGE RANGE TEXT =====
+function getPageRangeText(startPage, endPage) {
+    let text = '';
+    for (let i = startPage; i <= endPage; i++) {
+        if (pdfPageTexts[i]) {
+            text += `\n\n--- Page ${i} ---\n${pdfPageTexts[i]}`;
+        }
+    }
+    return text;
+}
+
+// ===== GET KEY POINTS FROM GEMINI API =====
+async function getKeyPoints(startPage, endPage, role, apiKey) {
     if (!apiKey.trim()) {
         showError('Please enter your Gemini API key.');
         return null;
     }
 
+    // Build text for the current page range
+    const rangeText = getPageRangeText(startPage, endPage);
+
     const prompt = `You are analyzing a PDF document for a ${role}.
 
-Here is the full document text:
-${pdfData.fullText}
+Here is the document text from pages ${startPage} to ${endPage}:
+${rangeText}
 
-Extract the 5 to 8 most important key points relevant to a ${role}.
+Extract the 5 to 8 most important key points relevant to a ${role} from these pages.
 For each key point, identify the approximate page number from the context.
 
 Return ONLY a JSON array with no other text. No markdown. No explanation. Format exactly like this:
@@ -80,7 +128,7 @@ Return ONLY a JSON array with no other text. No markdown. No explanation. Format
 ]
 
 Priority must be one of: "high", "medium", "low"
-Page numbers must be integers between 1 and ${pdfData.totalPages}.
+Page numbers must be integers between ${startPage} and ${endPage}.
 Return only the JSON array, nothing else.`;
 
     try {
@@ -132,7 +180,7 @@ function renderKeyPoints(keyPoints) {
     keyPointsList.innerHTML = '';
 
     if (!keyPoints || keyPoints.length === 0) {
-        keyPointsList.innerHTML = '<p style="color: var(--text-light);">No key points found.</p>';
+        keyPointsList.innerHTML = '<p style="color: var(--text-muted);">No key points found.</p>';
         return;
     }
 
@@ -153,6 +201,132 @@ function renderKeyPoints(keyPoints) {
 
         keyPointsList.appendChild(card);
     });
+
+    // Add pagination controls if PDF has more than 50 pages
+    if (totalPages > 50) {
+        const paginationDiv = document.createElement('div');
+        paginationDiv.className = 'pagination-controls';
+        paginationDiv.style.marginTop = '30px';
+        paginationDiv.style.textAlign = 'center';
+
+        // Page range info
+        const pageEndInfo = Math.min(currentPageStart + 49, totalPages);
+        const rangeInfo = document.createElement('p');
+        rangeInfo.style.marginBottom = '16px';
+        rangeInfo.style.color = 'var(--text-muted)';
+        rangeInfo.style.fontSize = '0.9rem';
+        rangeInfo.textContent = `Showing pages ${currentPageStart}-${pageEndInfo} of ${totalPages}`;
+        paginationDiv.appendChild(rangeInfo);
+
+        // Buttons container
+        const buttonsDiv = document.createElement('div');
+        buttonsDiv.style.display = 'flex';
+        buttonsDiv.style.gap = '12px';
+        buttonsDiv.style.justifyContent = 'center';
+        buttonsDiv.style.flexWrap = 'wrap';
+
+        // Previous button
+        if (currentPageStart > 1) {
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'btn btn-secondary';
+            prevBtn.textContent = '← Previous 50 Pages';
+            prevBtn.addEventListener('click', () => {
+                currentPageStart = Math.max(1, currentPageStart - 50);
+                loadPageRange();
+            });
+            buttonsDiv.appendChild(prevBtn);
+        }
+
+        // Next button
+        if (pageEndInfo < totalPages) {
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'btn btn-secondary';
+            nextBtn.textContent = 'Next 50 Pages →';
+            nextBtn.addEventListener('click', () => {
+                currentPageStart += 50;
+                loadPageRange();
+            });
+            buttonsDiv.appendChild(nextBtn);
+        }
+
+        paginationDiv.appendChild(buttonsDiv);
+        keyPointsList.parentElement.appendChild(paginationDiv);
+    }
+}
+
+// ===== LOAD PAGE RANGE =====
+async function loadPageRange() {
+    showLoading();
+    const apiKey = apiKeyInput.value;
+    const pageEnd = Math.min(currentPageStart + 49, totalPages);
+
+    const keyPoints = await getKeyPoints(currentPageStart, pageEnd, currentRole, apiKey);
+
+    if (keyPoints) {
+        renderKeyPoints(keyPoints);
+        resultsSection.style.display = 'block';
+        hideLoading();
+        // Scroll to top of results
+        resultsSection.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        hideLoading();
+    }
+}
+
+// ===== FORMAT CHAT RESPONSE =====
+function formatChatResponse(text) {
+    // Escape HTML entities first
+    let html = escapeHtml(text);
+
+    // Convert bold **text** to <strong>
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Convert headings # Heading to <h2>
+    html = html.replace(/^# (.*?)$/gm, '<h2 style="margin: 16px 0 12px 0; font-size: 1.3rem;">$1</h2>');
+
+    // Convert subheadings ## Heading to <h3>
+    html = html.replace(/^## (.*?)$/gm, '<h3 style="margin: 12px 0 10px 0; font-size: 1.1rem;">$1</h3>');
+
+    // Convert list items - item to <li>
+    const lines = html.split('\n');
+    let inList = false;
+    let formattedLines = [];
+
+    for (let line of lines) {
+        if (line.match(/^\s*[-•]\s+/)) {
+            if (!inList) {
+                formattedLines.push('<ul style="margin: 12px 0; padding-left: 24px;">');
+                inList = true;
+            }
+            line = line.replace(/^\s*[-•]\s+/, '');
+            formattedLines.push(`<li>${line}</li>`);
+        } else {
+            if (inList && line.trim() !== '') {
+                formattedLines.push('</ul>');
+                inList = false;
+            }
+            formattedLines.push(line);
+        }
+    }
+
+    if (inList) {
+        formattedLines.push('</ul>');
+    }
+
+    html = formattedLines.join('\n');
+
+    // Convert double newlines to paragraph breaks
+    html = html.replace(/\n\n+/g, '</p><p style="margin: 12px 0;">');
+
+    // Convert single newlines to <br>
+    html = html.replace(/\n/g, '<br>');
+
+    // Wrap in paragraph if not already wrapped
+    if (!html.includes('<p>')) {
+        html = `<p style="margin: 0;">${html}</p>`;
+    }
+
+    return html;
 }
 
 // ===== ASK QUESTION FUNCTION =====
@@ -163,7 +337,7 @@ async function askQuestion(question, pdfText, apiKey) {
     }
 
     if (!apiKey.trim()) {
-        showError('Please enter your Anthropic API key.');
+        showError('Please enter your Gemini API key.');
         return;
     }
 
@@ -207,7 +381,8 @@ User Question: ${question}`;
         const data = await response.json();
         const answer = data.candidates[0].content.parts[0].text;
 
-        responseText.textContent = answer;
+        // Format and display the response
+        responseText.innerHTML = formatChatResponse(answer);
         chatResponse.style.display = 'block';
         questionInput.value = '';
     } catch (error) {
@@ -280,7 +455,7 @@ pdfUpload.addEventListener('change', async (e) => {
 
     const apiKey = apiKeyInput.value;
     if (!apiKey.trim()) {
-        showError('Please enter your Anthropic API key first.');
+        showError('Please enter your Gemini API key first.');
         return;
     }
 
@@ -289,10 +464,23 @@ pdfUpload.addEventListener('change', async (e) => {
 
     try {
         // Extract text from PDF
-        currentPdfData = await extractTextFromPDF(file);
+        await extractTextFromPDF(file);
 
-        // Get key points
-        const keyPoints = await getKeyPoints(currentPdfData, currentRole, apiKey);
+        // Reset pagination
+        currentPageStart = 1;
+
+        // Save to sessionStorage for chat.html
+        const pdfContent = getPageRangeText(1, Math.min(50, totalPages));
+        sessionStorage.setItem('pdfText', pdfContent);
+        sessionStorage.setItem('fullPdfText', getPageRangeText(1, totalPages));
+        sessionStorage.setItem('pdfFileName', currentFileName);
+        sessionStorage.setItem('apiKey', apiKey);
+        sessionStorage.setItem('pdfPageTexts', JSON.stringify(pdfPageTexts));
+        sessionStorage.setItem('totalPages', totalPages);
+
+        // Get key points for first 50 pages
+        const pageEnd = Math.min(50, totalPages);
+        const keyPoints = await getKeyPoints(1, pageEnd, currentRole, apiKey);
 
         if (keyPoints) {
             renderKeyPoints(keyPoints);
@@ -315,16 +503,9 @@ roleButtons.forEach(btn => {
         currentRole = btn.getAttribute('data-role');
 
         // Re-extract key points with new role if PDF is loaded
-        if (currentPdfData) {
-            showLoading();
-            const apiKey = apiKeyInput.value;
-            getKeyPoints(currentPdfData, currentRole, apiKey).then(keyPoints => {
-                if (keyPoints) {
-                    renderKeyPoints(keyPoints);
-                    resultsSection.style.display = 'block';
-                }
-                hideLoading();
-            });
+        if (totalPages > 0) {
+            currentPageStart = 1;
+            loadPageRange();
         }
     });
 });
@@ -334,8 +515,9 @@ copyAllBtn.addEventListener('click', copyAllPoints);
 
 // Send question button
 sendBtn.addEventListener('click', () => {
-    if (currentPdfData) {
-        askQuestion(questionInput.value, currentPdfData.fullText, apiKeyInput.value);
+    if (totalPages > 0) {
+        const fullPdfText = getPageRangeText(1, totalPages);
+        askQuestion(questionInput.value, fullPdfText, apiKeyInput.value);
     } else {
         showError('Please upload a PDF first.');
     }
@@ -347,3 +529,20 @@ questionInput.addEventListener('keypress', (e) => {
         sendBtn.click();
     }
 });
+
+// Chat with PDF button
+const chatWithPdfBtn = document.getElementById('chatWithPdfBtn');
+if (chatWithPdfBtn) {
+    chatWithPdfBtn.addEventListener('click', () => {
+        // Save data to sessionStorage
+        const fullPdfText = getPageRangeText(1, totalPages);
+        sessionStorage.setItem('pdfText', fullPdfText);
+        sessionStorage.setItem('pdfFileName', currentFileName);
+        sessionStorage.setItem('apiKey', apiKeyInput.value);
+        sessionStorage.setItem('pdfPageTexts', JSON.stringify(pdfPageTexts));
+        sessionStorage.setItem('totalPages', totalPages);
+        
+        // Redirect to chat.html
+        window.location.href = 'chat.html';
+    });
+}

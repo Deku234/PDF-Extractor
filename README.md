@@ -57,7 +57,7 @@ Reading long PDFs is frustrating and time-consuming. Different professionals—s
 Visit: [PDF KeyPoint Extractor Live Demo](https://Deku234.github.io/PDF-Extractor)
 
 ### Step 3: Paste API Key
-Paste your Gemini API key into the **"Paste your Anthropic API key"** field
+Paste your Gemini API key into the **"Paste your Gemini API key"** field
 
 ### Step 4: Upload PDF
 Click **"📄 Upload PDF"** and select any PDF file from your computer
